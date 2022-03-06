@@ -11,7 +11,7 @@ class FidelBoard:
 
     # create board with given params
     def __init__(self, r=5, c=5, baby_freq=0.2, reg_freq=0.2, mama_freq=0.05, health_freq=0.1, wall_freq=0.05,
-                     start_loc=None, end_loc=None):
+                     start_loc=None, end_loc=None, max_health=2):
         # error checking
         if r <= 1 or c <= 1:
             print(f"Error, size {r}x{c} is too small")
@@ -51,7 +51,7 @@ class FidelBoard:
         self.board = board
         self.curr_pos = start_loc
         self.curr_experience = 0
-        self.max_health = 2
+        self.max_health = max_health
         self.curr_health = self.max_health
         self.kill_streak = 0
         self.curr_leash = []
@@ -102,24 +102,65 @@ class FidelBoard:
 
     # adds coords of current pos and next move
     def next_loc(self, next_move):
-        if next_move[0] is str:
+        if type(next_move[0]) is str:
             next_move = dir_coord_map[next_move]
         return (self.curr_pos[0] + next_move[0], self.curr_pos[1] + next_move[1])
 
     # returns tile of next step
     def next_step_tile(self, step):
-        next_pos = self.next_loc(self.curr_pos, step)
+        next_pos = self.next_loc(step)
         return self.board[next_pos[0]][next_pos[1]]
+
+    # update meta stats like heath, exp, killstreak
+    def update_stats(self, next_tile):
+        # baby spider
+        if next_tile == "B":
+            self.kill_streak += 1
+        # regular spider
+        elif next_tile == "R":
+            self.kill_streak += 1
+            self.curr_health -= 1
+            self.curr_experience += 1
+        # health pack
+        elif next_tile == "H":
+            self.curr_health = self.max_health
+            self.kill_streak = 0
+        # mama spider
+        elif next_tile == "M":
+            # mama spiders are flipped over
+            if self.kill_streak != 0 and self.kill_streak % 3 == 0:
+                self.curr_experience += 3
+                self.kill_streak += 1
+            # mama spiders are NOT flipped over
+            else:
+                self.curr_health -= 2
+                self.kill_streak = 0
+        # other tiles (empty and destination)
+        else:
+            self.kill_streak = 0
+
+        # no bonus
+        if self.kill_streak == 0:
+            return
+        # multiple of 3 bonus
+        elif self.kill_streak % 3 == 0:
+            self.curr_experience += 3
+        # regular bonus
+        elif self.kill_streak > 3:
+            self.curr_experience += 1
 
     # moves Fidel to that board place
     def take_step(self, next_move):
         char = dir_arrow_map[next_move]
-        self.board[self.curr_pos[0]][self.curr_pos[1]] = char
+        next_tile = self.next_step_tile(next_move)
 
         step = dir_coord_map[next_move]
         next_pos = self.next_loc(step)
 
+        self.update_stats(next_tile)
+
         self.board[next_pos[0]][next_pos[1]] = "F"
+        self.board[self.curr_pos[0]][self.curr_pos[1]] = char
         self.curr_pos = next_pos
         self.curr_leash.append(next_move)
 
@@ -128,12 +169,15 @@ class FidelBoard:
 
 board = FidelBoard(r=5, c=6)
 board.start_game()
+board.display_board()
 
 pos_moves = board.possible_moves()
 while (len(pos_moves) > 0):
     next_step = choice(pos_moves)
+    #print(board.next_step_tile(next_step)) # print tile type of next step
     board.take_step(next_step)
     pos_moves = board.possible_moves()
 
 board.display_board()
+print(board.curr_leash)
 
