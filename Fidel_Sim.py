@@ -1,10 +1,10 @@
 from random import seed, randrange, choice, choices
-
+from copy import deepcopy
 accessible_tiles = ["B", "R", "M", "H", "E", "D", " "]
 dir_coord_map = {"N": (-1, 0), "E": (0, 1), "S": (1, 0), "W": (0, -1)}
 dir_arrow_map = {"N": "↑", "E": "→", "S": "↓", "W": "←"}  # "Leash" https://www.i2symbol.com/symbols/arrows
 
-seed(202)  # comment out if needed, here for reproducibility
+#seed(202)  # comment out if needed, here for reproducibility
 
 
 class FidelBoard:
@@ -55,6 +55,8 @@ class FidelBoard:
         self.curr_health = self.max_health
         self.kill_streak = 0
         self.curr_leash = []
+        self.foundAns = False
+        self.count = 0
 
     # display board in human readable way
     def display_board(self):
@@ -156,28 +158,56 @@ class FidelBoard:
 
         step = dir_coord_map[next_move]
         next_pos = self.next_loc(step)
+        if self.foundAns == False:
+          self.update_stats(next_tile)
 
-        self.update_stats(next_tile)
+          self.board[next_pos[0]][next_pos[1]] = "F"
+          #self.board[self.curr_pos[0]][self.curr_pos[1]] = char
+          self.curr_pos = next_pos
+          self.curr_leash.append(next_move)
 
-        self.board[next_pos[0]][next_pos[1]] = "F"
-        self.board[self.curr_pos[0]][self.curr_pos[1]] = char
-        self.curr_pos = next_pos
-        self.curr_leash.append(next_move)
+
+    def backtrack(self,curr_pos):
+      #print(curr_pos)
+      self.count+=1
+      if self.foundAns or self.count == 20:
+        return
+      pos_moves = self.possible_moves()
+      for next_step in pos_moves:
+        step = dir_coord_map[next_step]
+        char = self.board[curr_pos[0]+step[0]][curr_pos[1]+step[1]]
+        self.take_step(next_step)
+        if char == 'D':
+          #print("found ans", self.curr_leash)
+          self.foundAns = True
+          return 
+        
+        curr_pos = deepcopy(self.curr_pos)
+        curr_leash = self.curr_leash.copy()
+        curr_exp = self.curr_experience
+        kill_streak = self.kill_streak
+        curr_health = self.curr_health
+
+        self.backtrack(self.curr_pos)
+        #print(char)
+        self.curr_pos = curr_pos 
+        #self.board[curr_pos[0]][curr_pos[1]] = char
+        if self.foundAns == False:
+          self.curr_leash = curr_leash
+          self.curr_experience = curr_exp
+          self.kill_streak = kill_streak
+          self.curr_health = curr_health
 
 
 # for playing around, ignore/ delete below
 
-board = FidelBoard(r=5, c=6)
+board = FidelBoard(r=5, c=5)
 board.start_game()
 board.display_board()
 
-pos_moves = board.possible_moves()
-while (len(pos_moves) > 0):
-    next_step = choice(pos_moves)
-    #print(board.next_step_tile(next_step)) # print tile type of next step
-    board.take_step(next_step)
-    pos_moves = board.possible_moves()
 
+print(board.curr_pos)
+board.backtrack(board.curr_pos)
 board.display_board()
 print(board.curr_leash)
-
+print(board.curr_experience)
