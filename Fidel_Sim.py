@@ -56,7 +56,7 @@ class FidelBoard:
         self.kill_streak = 0
         self.curr_leash = []
         self.foundAns = False
-        self.count = 0
+        #self.count = 0
 
     # display board in human readable way
     def display_board(self):
@@ -169,8 +169,8 @@ class FidelBoard:
 
     def backtrack(self,curr_pos):
       #print(curr_pos)
-      self.count+=1
-      if self.foundAns or self.count == 20:
+      #self.count+=1
+      if self.foundAns:
         return
       pos_moves = self.possible_moves()
       for next_step in pos_moves:
